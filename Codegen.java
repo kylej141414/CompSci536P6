@@ -267,42 +267,43 @@ public class Codegen {
         return(tmp);
     }
 
-    // **********************************************************************
-    // genData
-    // given: variable name n
-    // generate:
-    // .data
-    // .align 2
-    // _n: .space 4
-    // **********************************************************************
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     public static void genData(String name) {
-        p.println("\t\t.data");
-        p.println("\t\t.align 2");
+        p.println("\t.data");
+        p.println("\t.align 2");
         p.println("_" + name + ":" + (name.length() < 2 ? "\t" : "") + "\t.space 4");
     }
 
-    // Function related
     private static void genMainPreamble() {
-        p.println("\t\t.text");
-        p.println("\t\t.globl main");
-        p.println("main:");
-        p.println("__start:"); // only for main
+        p.println("\t.text");
+        p.println("\t.globl main");
+        p.println("main:		# METHOD ENTRY");
+        p.println("__start:    # add __start label for main only");
     }
 
     public static void genFuncPreamble(String f) {
         if (f.equals("main")) {
             genMainPreamble();
         } else {
-            p.println("\t\t.text");
+            p.println("\t.text");
             p.println("_" + f + ":");
         }
     }
 
     public static void genFuncPrologue(FnSym fnSym) {
-        // # push return address
-        // # push control link
-        // # set $fp
-        // # reserve space for locals
         genPushRA();
         genPushControlLink();
         genSetFpToSpPlus(fnSym.getParamSize() + 8);
@@ -310,12 +311,7 @@ public class Codegen {
     }
 
     public static void genFuncEpilogue(String fnName, String label, FnSym fnSym) {
-        // lw $ra, -<param size>($fp) # load return address
-        // move $t0, $fp # save control link
-        // lw $fp, -<paramsize+4>($fp) # restore FP
-        // move $sp, $t0 # restore SP
-        // jr $ra # return
-        generateLabeled(label, "", "function epilogue");
+        generateLabeled(label, "", "");
         generateIndexed("lw", RA, FP, -fnSym.getParamSize());
         generate("move", T0, FP);
         generateIndexed("lw", FP, FP, -(fnSym.getParamSize() + 4));
@@ -337,46 +333,39 @@ public class Codegen {
     }
 
     private static void genSetFpToSpPlus(int offset) {
-        String comment = "Set FP";
-        generateWithComment("addu", comment, FP, SP, String.valueOf(offset));
+        generate("addu", FP, SP, String.valueOf(offset));
     }
 
     private static void genReserveStack(int bytes) {
-        String comment = "Reserve space for locals";
-        generateWithComment("subu", comment, SP, SP, String.valueOf(bytes));
+        generate("subu", SP, SP, String.valueOf(bytes));
     }
 
-    // literal related
     public static void genPushLit(int i) {
         generate("li", T0, String.valueOf(i));
         genPush(T0);
     }
 
     public static void genPushLit(String s) {
-        // Get the label to the string literal
         String label = stringLitMap.containsKey(s) ? stringLitMap.get(s) : genString(s);
-
-        // Push the address of the literal to the stack
         generate("la", T0, label);
         genPush(T0);
     }
 
     private static String genString(String s) {
         String newLabel = nextLabel();
-        p.println("\t\t.data");
+        p.println("\t.data");
         p.println(newLabel + ":\t.asciiz " + s);
         stringLitMap.put(s, newLabel);
-        p.println("\t\t.text"); // restart .text
+        p.println("\t.text"); 
         return newLabel;
     }
-
+    
     public static void genPushLit(boolean b) {
         String booleanLit = b ? TRUE : FALSE;
         generate("li", T0, booleanLit);
         genPush(T0);
     }
 
-    // system call related
     public static void genWriteIntSyscall() {
         genSyscall(1);
     }
@@ -391,8 +380,8 @@ public class Codegen {
 
     public static void genReadIntSyscall() {
         genSyscall(5);
-    }
-
+    } 
+    
     public static void genReadBoolSyscall() {
         genReadIntSyscall();
     }
@@ -402,7 +391,6 @@ public class Codegen {
         generate("syscall");
     }
 
-    // true/false related
     public static void genFlipOneBit(String reg) {
         generate("xori", reg, reg, "1");
     }
